@@ -106,6 +106,7 @@ export function FlashcardDeck({
   const [isAnswerVisible, setIsAnswerVisible] = useState(false);
   const [quizMode, setQuizMode] = useState<QuizMode>(getRandomQuizMode);
   const [displayMode, setDisplayMode] = useState<DisplayMode>("wordFirst");
+  const [isCycleCompleteOpen, setIsCycleCompleteOpen] = useState(false);
 
   const activeCard = studyCards[activeIndex];
   const quiz = useMemo(
@@ -117,6 +118,7 @@ export function FlashcardDeck({
     () => `${activeIndex + 1} / ${studyCards.length}`,
     [activeIndex, studyCards.length],
   );
+  const isLastCard = activeIndex === studyCards.length - 1;
 
   if (!activeCard) {
     return (
@@ -138,7 +140,17 @@ export function FlashcardDeck({
   };
 
   const goToNext = () => {
-    goToCard(activeIndex === studyCards.length - 1 ? 0 : activeIndex + 1);
+    if (isLastCard) {
+      setIsCycleCompleteOpen(true);
+      return;
+    }
+
+    goToCard(activeIndex + 1);
+  };
+
+  const continueStudying = () => {
+    setIsCycleCompleteOpen(false);
+    goToCard(0);
   };
 
   const recordReview = (isCorrect: boolean) => {
@@ -153,6 +165,12 @@ export function FlashcardDeck({
       ),
     );
     void onReviewCard?.(reviewedCard);
+
+    if (isLastCard) {
+      setIsCycleCompleteOpen(true);
+      return;
+    }
+
     goToNext();
   };
 
@@ -160,15 +178,10 @@ export function FlashcardDeck({
     <section className="flashcard-section" aria-label="Flashcard deck">
       <div className="deck-header">
         <div>
-          <button
-            className="text-button"
-            type="button"
-            onClick={onBackToDecks}
-          >
-            카드 묶음으로
+          <button className="text-button" type="button" onClick={onBackToDecks}>
+            돌아가기
           </button>
-          <p className="eyebrow">오늘의 카드</p>
-          <h1>{title}</h1>
+          <h2>{title}</h2>
         </div>
         <div className="deck-tools">
           <div className="segmented-control" aria-label="Display mode">
@@ -257,6 +270,36 @@ export function FlashcardDeck({
           알아요
         </button>
       </div>
+
+      {isCycleCompleteOpen ? (
+        <div className="cycle-complete-overlay" role="presentation">
+          <section
+            className="cycle-complete-dialog"
+            aria-labelledby="cycle-complete-title"
+            aria-modal="true"
+            role="dialog"
+          >
+            <p className="eyebrow">한 바퀴 완료</p>
+            <h2 id="cycle-complete-title">이 카드 묶음을 계속 공부할까요?</h2>
+            <p>
+              모든 카드를 한 번씩 봤습니다. 바로 한 바퀴 더 돌리거나, 메인으로
+              돌아갈 수 있습니다.
+            </p>
+            <div className="cycle-complete-actions">
+              <button type="button" onClick={continueStudying}>
+                계속 학습하기
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={onBackToDecks}
+              >
+                메인으로
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       <dl className="review-stats">
         <div>

@@ -152,7 +152,7 @@ function App() {
           <p className="user-name">{user.displayName ?? user.email}</p>
         </div>
         <button className="secondary-button" onClick={logout}>
-          Logout
+          로그아웃
         </button>
       </header>
       {deckError ? <p className="status-message error">{deckError}</p> : null}

@@ -28,6 +28,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  height: 28px;
   padding-bottom: 24px;
   border-bottom: 1px solid var(--border);
 }
@@ -84,6 +85,7 @@ button:focus-visible {
 
 .secondary-button {
   background: var(--social-bg);
+  font-weight: 700;
 }
 
 .text-button {
@@ -304,6 +306,43 @@ button:focus-visible {
   margin-top: 10px;
 }
 
+.deck-actions button {
+    flex: 1;
+}
+
+.cycle-complete-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(8px);
+}
+
+.cycle-complete-dialog {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 16px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+  /* background: linear-gradient(180deg, var(--bg), var(--social-bg)); */
+  box-shadow: var(--shadow);
+}
+
+.cycle-complete-dialog h2,
+.cycle-complete-dialog p {
+  margin: 0;
+}
+
+.cycle-complete-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .review-button {
   min-height: 52px;
   font-weight: 800;
@@ -377,7 +416,10 @@ button:focus-visible {
     padding: 20px;
   }
 
-  .top-bar,
+  .progress-pill {
+    flex: 1;
+    text-align: center;
+  }
   .deck-header {
     align-items: start;
     flex-direction: column;
@@ -417,13 +459,21 @@ button:focus-visible {
   .example {
     font-size: 20px;
   }
-
+/* 
   .deck-actions {
     grid-template-columns: 1fr;
-  }
+  } */
 
   .review-actions,
   .review-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cycle-complete-dialog {
+    padding: 22px;
+  }
+
+  .cycle-complete-actions {
+    grid-template-columns: 1fr;
   }
 }

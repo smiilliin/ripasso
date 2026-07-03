@@ -16,8 +16,8 @@ export function DeckPicker({
   return (
     <section className="deck-picker" aria-labelledby="deck-picker-title">
       <div className="deck-picker-header">
-        <p className="eyebrow">Choose a deck</p>
-        <h1 id="deck-picker-title">학습할 카드 묶음</h1>
+        <p className="eyebrow">학습할 묶음을 고르세요</p>
+        <h2 id="deck-picker-title">카드 묶음</h2>
       </div>
 
       {decks.length === 0 ? (
