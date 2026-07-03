@@ -132,10 +132,7 @@ function App() {
         <section className="auth-panel">
           <p className="eyebrow">Spaced repetition for language learners</p>
           <h1>Ripasso</h1>
-          <p className="auth-copy">
-            이탈리아어 단어를 플래시카드로 복습하고, 곧 Firestore에 학습 기록을
-            저장합니다.
-          </p>
+          <p className="auth-copy">망각과 떠올림을 위한 복습</p>
           <button className="primary-button" onClick={loginWithGoogle}>
             Google Login
           </button>
