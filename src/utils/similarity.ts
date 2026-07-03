@@ -1,0 +1,47 @@
+import { distance as levenshteinDistance } from "fastest-levenshtein";
+import jaroWinkler from "jaro-winkler";
+
+import { normalize } from "@/utils/normalize";
+
+export type AnswerGrade = "correct" | "typo" | "wrong";
+
+export interface AnswerEvaluation {
+  grade: AnswerGrade;
+  distance: number;
+  similarity: number;
+}
+
+export interface EvaluateAnswerOptions {
+  maxTypoDistance?: number;
+  minTypoSimilarity?: number;
+}
+
+const DEFAULT_MAX_TYPO_DISTANCE = 1;
+const DEFAULT_MIN_TYPO_SIMILARITY = 0.88;
+
+export function evaluateAnswer(
+  expected: string,
+  actual: string,
+  options: EvaluateAnswerOptions = {},
+): AnswerEvaluation {
+  const normalizedExpected = normalize(expected);
+  const normalizedActual = normalize(actual);
+  const distance = levenshteinDistance(normalizedExpected, normalizedActual);
+  const similarity = jaroWinkler(normalizedExpected, normalizedActual);
+
+  if (distance === 0) {
+    return { grade: "correct", distance, similarity };
+  }
+
+  const maxTypoDistance =
+    options.maxTypoDistance ?? DEFAULT_MAX_TYPO_DISTANCE;
+  const minTypoSimilarity =
+    options.minTypoSimilarity ?? DEFAULT_MIN_TYPO_SIMILARITY;
+
+  if (distance <= maxTypoDistance && similarity >= minTypoSimilarity) {
+    return { grade: "typo", distance, similarity };
+  }
+
+  return { grade: "wrong", distance, similarity };
+}
+

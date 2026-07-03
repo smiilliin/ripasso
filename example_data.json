@@ -1,0 +1,56 @@
+[
+  {
+    "word": "mangiare",
+    "meaning": "먹다",
+    "part_of_speech": "verb",
+    "pronunciation": "man-JA-re",
+    "examples": [
+      {
+        "sentence": "Mangio una pizza ogni sabato.",
+        "translation": "나는 매주 토요일 피자를 먹는다.",
+        "target": "Mangio"
+      },
+      {
+        "sentence": "Domani mangeremo insieme.",
+        "translation": "내일 우리는 함께 먹을 것이다.",
+        "target": "mangeremo"
+      }
+    ]
+  },
+  {
+    "word": "cane",
+    "meaning": "개",
+    "part_of_speech": "noun",
+    "pronunciation": "KA-ne",
+    "examples": [
+      {
+        "sentence": "Il cane dorme sul divano.",
+        "translation": "개가 소파에서 자고 있다.",
+        "target": "cane"
+      },
+      {
+        "sentence": "Il mio cane è molto intelligente.",
+        "translation": "우리 개는 매우 똑똑하다.",
+        "target": "cane"
+      }
+    ]
+  },
+  {
+    "word": "bere",
+    "meaning": "마시다",
+    "part_of_speech": "verb",
+    "pronunciation": "BE-re",
+    "examples": [
+      {
+        "sentence": "Bevo un caffè ogni mattina.",
+        "translation": "나는 매일 아침 커피를 마신다.",
+        "target": "Bevo"
+      },
+      {
+        "sentence": "Vuoi bere qualcosa?",
+        "translation": "뭔가 마시고 싶니?",
+        "target": "bere"
+      }
+    ]
+  }
+]
