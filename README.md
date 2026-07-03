@@ -1,75 +1,34 @@
-# React + TypeScript + Vite
+# 🇮🇹 Ripasso
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> **망각이 아니라, 다시 떠올림을 위한 언어 학습.**
 
-Currently, two official plugins are available:
+Ripasso는 이탈리아어로 **'복습(Review)'** 을 의미합니다.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+망각곡선(Spaced Repetition)을 기반으로,
+단어와 예문, 발음을 자연스럽게 반복하며
+언어를 '외우는 것'이 아니라 **'다시 떠올리는 것'** 에 집중하는 언어 학습 플랫폼입니다.
 
-## React Compiler
+## ✨ Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 🔐 Google 로그인 (Firebase Authentication)
+- 📚 플래시카드 기반 단어 학습
+- 🧠 망각곡선 기반 복습 시스템
+- ✍️ 예문 빈칸 퀴즈
+- 🎧 발음 학습
+- 🤖 AI 기반 예문 생성 (예정)
 
-## Expanding the ESLint configuration
+## 🛠️ Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- React
+- TypeScript
+- Vite
+- Firebase Authentication
+- Firestore
+- Firebase Hosting
+- OpenRouter (Planned)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🚀 Vision
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
+단순히 단어를 암기하는 것이 아니라,
+반복적인 **'다시 떠올림(Ripasso)'** 을 통해
+언어가 자연스럽게 기억에 남는 학습 경험을 만드는 것을 목표로 합니다.
