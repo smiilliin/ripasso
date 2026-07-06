@@ -262,7 +262,7 @@ button:focus-visible {
 .word,
 .meaning {
   color: var(--text-h);
-  font-size: 56px;
+  font-size: 48px;
   line-height: 1;
   font-weight: 750;
 }
@@ -273,10 +273,11 @@ button:focus-visible {
   font-size: 20px;
 }
 
+.emergence-count,
 .prompt-secondary,
 .answer-secondary {
   color: var(--text);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 650;
 }
 
@@ -288,7 +289,7 @@ button:focus-visible {
 
 .example {
   color: var(--text-h);
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1.35;
 }
 
@@ -359,6 +360,10 @@ button:focus-visible {
   color: #166534;
   background: rgba(22, 163, 74, 0.1);
 }
+.review-button.disabled {
+  border-color: #444845;
+  background: rgba(11, 81, 37, 0.1);
+}
 
 .review-stats {
   display: grid;
@@ -409,6 +414,45 @@ button:focus-visible {
 .empty-state {
   margin: auto;
   text-align: center;
+}
+.cloze-ruler,
+.cloze-input {
+  font-size: 18px;
+  font-weight: 800;
+  font-family: inherit;
+  letter-spacing: inherit;
+}
+
+.cloze-ruler {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+}
+
+.cloze-input {
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-h);
+  background: var(--social-bg);
+}
+
+.cloze-start,
+.cloze-end {
+  color: var(--text-h);
+  font-weight: 700;
+}
+.submit-button {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--social-bg);
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: 8px;
 }
 
 @media (max-width: 720px) {

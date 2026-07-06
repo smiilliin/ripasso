@@ -1,7 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import type { Card } from "@/types/card";
 import { calculateNextReview } from "@/utils/reviewAlgorithm";
+
+import { distance } from "fastest-levenshtein";
+import jaroWinkler from "jaro-winkler";
 
 interface FlashcardDeckProps {
   cards: Card[];
@@ -33,14 +36,16 @@ function getRandomQuizMode(): QuizMode {
   return quizModes[Math.floor(Math.random() * quizModes.length)];
 }
 
-function getClozeSentence(card: Card): string {
+function getClozeParts(card: Card) {
   const example = card.examples[0];
 
   if (!example) {
-    return "예문이 아직 없습니다.";
+    return { before: "", after: "" };
   }
 
-  return example.sentence.replace(example.target, "_____");
+  const [before, after] = example.sentence.split(example.target);
+
+  return { before, after };
 }
 
 function getPrimaryExpression(card: Card, displayMode: DisplayMode): string {
@@ -56,9 +61,19 @@ function createQuizPrompt(
   mode: QuizMode,
   displayMode: DisplayMode,
 ): QuizPrompt {
-  const example = card.examples[0];
   const primaryExpression = getPrimaryExpression(card, displayMode);
   const secondaryExpression = getSecondaryExpression(card, displayMode);
+
+  if (mode === "pronunciationToMeaning") {
+    return {
+      mode,
+      label: "표현 -> 뜻",
+      prompt: primaryExpression,
+      answer: card.meaning,
+      answerSecondary: secondaryExpression,
+      helper: "표현 단서를 보고 뜻을 떠올려보세요.",
+    };
+  }
 
   if (mode === "meaningToPronunciation") {
     return {
@@ -71,28 +86,25 @@ function createQuizPrompt(
     };
   }
 
-  if (mode === "pronunciationToMeaning") {
+  if (mode === "cloze") {
     return {
       mode,
-      label: "표현 -> 뜻",
-      prompt: primaryExpression,
-      promptSecondary: secondaryExpression,
-      answer: card.meaning,
-      helper: "표현 단서를 보고 뜻을 떠올려보세요.",
+      label: "예문 빈칸",
+      prompt: card.examples[0]?.translation ?? "",
+      answer: card.examples[0]?.sentence ?? "",
+      answerSecondary: card.word,
+      helper: "빈칸에 들어갈 단어를 떠올려보세요.",
     };
   }
 
   return {
     mode,
-    label: "예문 빈칸",
-    prompt: getClozeSentence(card),
-    answer: example?.target ?? card.word,
-    helper: example?.translation ?? "빈칸에 들어갈 단어를 떠올려보세요.",
+    label: "표현 -> 뜻",
+    prompt: primaryExpression,
+    answer: card.meaning,
+    answerSecondary: secondaryExpression,
+    helper: "표현 단서를 보고 뜻을 떠올려보세요.",
   };
-}
-
-function formatInterval(interval: number): string {
-  return `${interval.toFixed(1)}일`;
 }
 
 export function FlashcardDeck({
@@ -119,6 +131,41 @@ export function FlashcardDeck({
     [activeIndex, studyCards.length],
   );
   const isLastCard = activeIndex === studyCards.length - 1;
+  const cloze = getClozeParts(activeCard);
+  const [clozeAnswer, setClozeAnswer] = useState("");
+  const [clozeInputWidth, setClozeInputWidth] = useState(32);
+  const [shownOnce, setShownOnce] = useState(false);
+  const [clozeFeedback, setClozeFeedback] = useState("");
+
+  const submitClozeAnswer = () => {
+    setIsAnswerVisible((current) => !current);
+
+    const normalize = (text: string) => {
+      return text.trim().toLowerCase().normalize("NFC");
+    };
+
+    const answer = normalize(clozeAnswer);
+    const target = normalize(activeCard.word);
+
+    const d = distance(answer, target);
+    const j = jaroWinkler(answer, target);
+
+    if (d == 0) {
+      setClozeFeedback(`✅ 정답입니다! "${activeCard.word}"입니다.`);
+    } else if (d <= 2 && j >= 0.92) {
+      setClozeFeedback(
+        `⚠️ 거의 맞았습니다! ("${answer}" -> "${activeCard.word}") 철자를 한 번 확인해 보세요.`,
+      );
+    } else {
+      setClozeFeedback(`❌ 틀렸습니다. "${activeCard.word}"입니다.`);
+    }
+
+    setClozeAnswer("");
+    setClozeInputWidth(32);
+    setShownOnce(true);
+  };
+
+  const clozeAnswerRuler = useRef<HTMLSpanElement>(null);
 
   if (!activeCard) {
     return (
@@ -133,10 +180,6 @@ export function FlashcardDeck({
     setActiveIndex(nextIndex);
     setIsAnswerVisible(false);
     setQuizMode(getRandomQuizMode());
-  };
-
-  const goToPrevious = () => {
-    goToCard(activeIndex === 0 ? studyCards.length - 1 : activeIndex - 1);
   };
 
   const goToNext = () => {
@@ -171,6 +214,8 @@ export function FlashcardDeck({
       return;
     }
 
+    setShownOnce(false);
+
     goToNext();
   };
 
@@ -190,14 +235,14 @@ export function FlashcardDeck({
               type="button"
               onClick={() => setDisplayMode("wordFirst")}
             >
-              단어 우선
+              단어 (한자)
             </button>
             <button
               className={displayMode === "pronunciationFirst" ? "active" : ""}
               type="button"
               onClick={() => setDisplayMode("pronunciationFirst")}
             >
-              발음 우선
+              발음 (히라가나)
             </button>
           </div>
           <p className="progress-pill">{progress}</p>
@@ -207,7 +252,15 @@ export function FlashcardDeck({
       <button
         className="flashcard"
         type="button"
-        onClick={() => setIsAnswerVisible((current) => !current)}
+        onClick={() => {
+          setIsAnswerVisible((current) => {
+            if (quiz?.mode !== "cloze") {
+              setShownOnce(true);
+              return !current;
+            }
+            return current;
+          });
+        }}
       >
         <span className="card-label">{quiz?.label}</span>
         {!isAnswerVisible ? (
@@ -215,44 +268,97 @@ export function FlashcardDeck({
             <span className={quiz?.mode === "cloze" ? "example" : "word"}>
               {quiz?.prompt}
             </span>
-            {quiz?.promptSecondary ? (
-              <span className="prompt-secondary">{quiz.promptSecondary}</span>
-            ) : null}
-            <span className="hint">{quiz?.helper}</span>
-            <span className="hint">카드를 눌러 정답 보기</span>
+
+            {quiz?.mode === "cloze" && (
+              <span>
+                <span className="cloze-before">{cloze.before}</span>
+                <span
+                  className="cloze-ruler"
+                  style={{
+                    visibility: "hidden",
+                    position: "absolute",
+                    whiteSpace: "pre",
+                  }}
+                  ref={clozeAnswerRuler}
+                >
+                  {clozeAnswer}
+                </span>
+
+                <input
+                  className="cloze-input"
+                  value={clozeAnswer}
+                  style={{ width: clozeInputWidth }}
+                  // clozer input changing width when input is typed
+                  onChange={(e) => {
+                    const input = e.target as HTMLInputElement;
+
+                    setClozeAnswer(input.value);
+                    setClozeInputWidth(
+                      Math.max(
+                        (clozeAnswerRuler.current?.offsetWidth ?? 0) + 32,
+                        32,
+                      ),
+                    );
+                  }}
+                />
+
+                <span className="cloze-after">{cloze.after}</span>
+              </span>
+            )}
+
+            {/* For height alignment */}
+            <span
+              className="emergence-count"
+              style={{
+                visibility: quiz?.mode !== "cloze" ? "visible" : "hidden",
+              }}
+            >
+              {activeCard.review.reviewCount}번째 등장한 단어예요
+            </span>
+            <span className="example" style={{ visibility: "hidden" }}>
+              .
+            </span>
+
+            {quiz?.mode === "cloze" ? (
+              <span>
+                <button
+                  className="submit-button"
+                  onClick={() => submitClozeAnswer()}
+                >
+                  여기를 눌러 제출
+                </button>
+              </span>
+            ) : (
+              <span className="hint">카드를 눌러 정답 보기</span>
+            )}
           </span>
         ) : (
           <span className="card-face">
-            <span className="meaning">{quiz?.answer}</span>
-            {quiz?.answerSecondary ? (
-              <span className="answer-secondary">{quiz.answerSecondary}</span>
-            ) : null}
-            <span className="meta">
-              {getPrimaryExpression(activeCard, displayMode)} ·{" "}
-              {activeCard.partOfSpeech} · {activeCard.examples[0]?.difficulty}
-            </span>
-            <span className="example">{activeCard.examples[0]?.sentence}</span>
+            {quiz?.mode === "cloze" ? (
+              <>
+                <span>{clozeFeedback}</span>
+                <span className="example">{quiz?.answer}</span>
+              </>
+            ) : (
+              <>
+                <span className="meaning">{quiz?.answer}</span>
+
+                <span className="answer-secondary">
+                  {quiz?.answerSecondary ? quiz.answerSecondary : ""}
+                </span>
+
+                <span className="example">
+                  {activeCard.examples[0]?.sentence}
+                </span>
+              </>
+            )}
+
             <span className="translation">
               {activeCard.examples[0]?.translation}
             </span>
           </span>
         )}
       </button>
-
-      <div className="deck-actions">
-        <button type="button" onClick={goToPrevious}>
-          이전
-        </button>
-        <button
-          type="button"
-          onClick={() => setIsAnswerVisible((current) => !current)}
-        >
-          {isAnswerVisible ? "문제 보기" : "정답 보기"}
-        </button>
-        <button type="button" onClick={goToNext}>
-          다음
-        </button>
-      </div>
 
       <div className="review-actions">
         <button
@@ -262,13 +368,17 @@ export function FlashcardDeck({
         >
           몰라요
         </button>
-        <button
-          className="review-button know"
-          type="button"
-          onClick={() => recordReview(true)}
-        >
-          알아요
-        </button>
+        {shownOnce ? (
+          <button
+            className="review-button know"
+            type="button"
+            onClick={() => recordReview(true)}
+          >
+            알아요
+          </button>
+        ) : (
+          <button className="review-button disabled" type="button"></button>
+        )}
       </div>
 
       {isCycleCompleteOpen ? (
@@ -300,38 +410,6 @@ export function FlashcardDeck({
           </section>
         </div>
       ) : null}
-
-      <dl className="review-stats">
-        <div>
-          <dt>간격</dt>
-          <dd>{formatInterval(activeCard.review.interval)}</dd>
-        </div>
-        <div>
-          <dt>Ease</dt>
-          <dd>{activeCard.review.ease.toFixed(1)}</dd>
-        </div>
-        <div>
-          <dt>복습</dt>
-          <dd>{activeCard.review.reviewCount}회</dd>
-        </div>
-        <div>
-          <dt>정답</dt>
-          <dd>{activeCard.review.correctCount}회</dd>
-        </div>
-      </dl>
-
-      <div className="card-list" aria-label="Card list">
-        {studyCards.map((card, index) => (
-          <button
-            className={index === activeIndex ? "card-chip active" : "card-chip"}
-            key={card.id}
-            type="button"
-            onClick={() => goToCard(index)}
-          >
-            {getPrimaryExpression(card, displayMode)}
-          </button>
-        ))}
-      </div>
     </section>
   );
 }
