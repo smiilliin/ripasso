@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 
-import type { Card, Example } from "@/types/card";
+import type { Card } from "@/types/card";
 import { calculateNextReview } from "@/utils/reviewAlgorithm";
 
 import { distance } from "fastest-levenshtein";
