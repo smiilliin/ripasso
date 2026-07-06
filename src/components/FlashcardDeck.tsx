@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { Card } from "@/types/card";
 import { calculateNextReview } from "@/utils/reviewAlgorithm";
@@ -178,6 +178,12 @@ export function FlashcardDeck({
 
   const clozeAnswerRuler = useRef<HTMLSpanElement>(null);
 
+  useEffect(() => {
+    setClozeInputWidth(
+      Math.max((clozeAnswerRuler.current?.offsetWidth ?? 0) + 32, 32),
+    );
+  }, [clozeAnswer]);
+
   if (!activeCard) {
     return (
       <section className="empty-state">
@@ -299,18 +305,7 @@ export function FlashcardDeck({
                   className="cloze-input"
                   value={clozeAnswer}
                   style={{ width: clozeInputWidth }}
-                  // clozer input changing width when input is typed
-                  onChange={(e) => {
-                    const input = e.target as HTMLInputElement;
-
-                    setClozeAnswer(input.value);
-                    setClozeInputWidth(
-                      Math.max(
-                        (clozeAnswerRuler.current?.offsetWidth ?? 0) + 32,
-                        32,
-                      ),
-                    );
-                  }}
+                  onChange={(e) => setClozeAnswer(e.target.value)}
                 />
 
                 <span className="cloze-after">{cloze.after}</span>
