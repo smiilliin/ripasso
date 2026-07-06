@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { Card } from "@/types/card";
 import { calculateNextReview } from "@/utils/reviewAlgorithm";
@@ -176,12 +176,30 @@ export function FlashcardDeck({
     setShownOnce(true);
   };
 
-  const clozeAnswerRuler = useRef<HTMLSpanElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setClozeInputWidth(
-      Math.max((clozeAnswerRuler.current?.offsetWidth ?? 0) + 32, 32),
-    );
+  useLayoutEffect(() => {
+    if (!inputRef.current) return;
+
+    if (!canvasRef.current) {
+      canvasRef.current = document.createElement("canvas");
+    }
+
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
+
+    const style = getComputedStyle(inputRef.current);
+
+    ctx.font = `
+      ${style.fontWeight}
+      ${style.fontSize}
+      ${style.fontFamily}
+    `;
+
+    const width = ctx.measureText(clozeAnswer || " ").width;
+
+    setClozeInputWidth(Math.max(width + 24, 32));
   }, [clozeAnswer]);
 
   if (!activeCard) {
@@ -289,20 +307,9 @@ export function FlashcardDeck({
             {quiz?.mode === "cloze" && (
               <span>
                 <span className="cloze-before">{cloze.before}</span>
-                <span
-                  className="cloze-ruler"
-                  style={{
-                    visibility: "hidden",
-                    position: "absolute",
-                    whiteSpace: "pre",
-                  }}
-                  ref={clozeAnswerRuler}
-                >
-                  {clozeAnswer}
-                </span>
-
                 <input
                   className="cloze-input"
+                  ref={inputRef}
                   value={clozeAnswer}
                   style={{ width: clozeInputWidth }}
                   onChange={(e) => setClozeAnswer(e.target.value)}
