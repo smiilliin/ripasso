@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 
-import type { Card } from "@/types/card";
+import type { Card, Example } from "@/types/card";
 import { calculateNextReview } from "@/utils/reviewAlgorithm";
 
 import { distance } from "fastest-levenshtein";
@@ -137,27 +137,38 @@ export function FlashcardDeck({
   const [shownOnce, setShownOnce] = useState(false);
   const [clozeFeedback, setClozeFeedback] = useState("");
 
+  const currentExample = useMemo(() => {
+    const examples = activeCard?.examples || null;
+
+    if (!examples || examples.length === 0) {
+      return null;
+    }
+
+    return examples[Math.round(Math.random() * (examples.length - 1))];
+  }, [activeCard]);
+
   const submitClozeAnswer = () => {
     setIsAnswerVisible((current) => !current);
 
     const normalize = (text: string) => {
       return text.trim().toLowerCase().normalize("NFC");
     };
+    const target_answer = currentExample?.target ?? activeCard.word;
 
     const answer = normalize(clozeAnswer);
-    const target = normalize(activeCard.word);
+    const target = normalize(target_answer);
 
     const d = distance(answer, target);
     const j = jaroWinkler(answer, target);
 
     if (d == 0) {
-      setClozeFeedback(`✅ 정답입니다! "${activeCard.word}"입니다.`);
+      setClozeFeedback(`✅ 정답입니다! "${target_answer}"입니다.`);
     } else if (d <= 2 && j >= 0.92) {
       setClozeFeedback(
-        `⚠️ 거의 맞았습니다! ("${answer}" -> "${activeCard.word}") 철자를 한 번 확인해 보세요.`,
+        `⚠️ 거의 맞았습니다! ("${answer}" -> "${target_answer}") 철자를 한 번 확인해 보세요.`,
       );
     } else {
-      setClozeFeedback(`❌ 틀렸습니다. "${activeCard.word}"입니다.`);
+      setClozeFeedback(`❌ 틀렸습니다. "${target_answer}"입니다.`);
     }
 
     setClozeAnswer("");
@@ -347,15 +358,11 @@ export function FlashcardDeck({
                   {quiz?.answerSecondary ? quiz.answerSecondary : ""}
                 </span>
 
-                <span className="example">
-                  {activeCard.examples[0]?.sentence}
-                </span>
+                <span className="example">{currentExample?.sentence}</span>
               </>
             )}
 
-            <span className="translation">
-              {activeCard.examples[0]?.translation}
-            </span>
+            <span className="translation">{currentExample?.translation}</span>
           </span>
         )}
       </button>
