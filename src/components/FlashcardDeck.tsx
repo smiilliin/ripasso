@@ -5,6 +5,8 @@ import { calculateNextReview } from "@/utils/reviewAlgorithm";
 
 import { distance } from "fastest-levenshtein";
 import jaroWinkler from "jaro-winkler";
+import { normalize } from "@/utils/normalize";
+import { evaluateAnswer } from "@/utils/similarity";
 
 interface FlashcardDeckProps {
   cards: Card[];
@@ -150,25 +152,18 @@ export function FlashcardDeck({
   const submitClozeAnswer = () => {
     setIsAnswerVisible((current) => !current);
 
-    const normalize = (text: string) => {
-      return text.trim().toLowerCase().normalize("NFC");
-    };
-    const target_answer = currentExample?.target ?? activeCard.word;
+    const target = currentExample?.target ?? activeCard.word;
 
-    const answer = normalize(clozeAnswer);
-    const target = normalize(target_answer);
+    const ev = evaluateAnswer(clozeAnswer, target);
 
-    const d = distance(answer, target);
-    const j = jaroWinkler(answer, target);
-
-    if (d == 0) {
-      setClozeFeedback(`✅ 정답입니다! "${target_answer}"입니다.`);
-    } else if (d <= 2 && j >= 0.92) {
+    if (ev.grade === "correct") {
+      setClozeFeedback(`✅ 정답입니다! "${target}"입니다.`);
+    } else if (ev.grade === "typo") {
       setClozeFeedback(
-        `⚠️ 거의 맞았습니다! ("${answer}" -> "${target_answer}") 철자를 한 번 확인해 보세요.`,
+        `⚠️ 거의 맞았습니다! ("${clozeAnswer}" -> "${target}") 철자를 한 번 확인해 보세요.`,
       );
     } else {
-      setClozeFeedback(`❌ 틀렸습니다. "${target_answer}"입니다.`);
+      setClozeFeedback(`❌ 틀렸습니다. "${target}"입니다.`);
     }
 
     setClozeAnswer("");
