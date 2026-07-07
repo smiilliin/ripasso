@@ -262,8 +262,11 @@ export function FlashcardDeck({
     setIsAnswerVisible((current) => !current);
 
     const target = currentExample?.target ?? activeCard.word;
+    const acceptedTargets = (currentExample?.acceptedTargets ?? []).concat([
+      target,
+    ]);
 
-    const ev = evaluateAnswer(clozeAnswer, target);
+    const ev = evaluateAnswer(clozeAnswer, acceptedTargets);
 
     if (ev.grade === "correct") {
       setClozeFeedback(`✅ 정답입니다! "${target}"입니다.`);
@@ -324,6 +327,7 @@ export function FlashcardDeck({
     setIsCycleCompleteOpen(false);
     goToCard(0);
     setUpdateFlag(true);
+    setShownOnce(false);
   };
 
   const judge = useCallback(
@@ -426,7 +430,7 @@ export function FlashcardDeck({
                 visibility: quiz?.mode !== "cloze" ? "visible" : "hidden",
               }}
             >
-              {(activeCard?.review?.level ?? 0) + 1}번째로 등장한 단어예요
+              {activeCard?.review?.level ?? 0} 정도로 익숙한 단어예요
             </span>
             <span className="example" style={{ visibility: "hidden" }}>
               .

@@ -19,7 +19,7 @@ export interface EvaluateAnswerOptions {
 const DEFAULT_MAX_TYPO_DISTANCE = 1;
 const DEFAULT_MIN_TYPO_SIMILARITY = 0.88;
 
-export function evaluateAnswer(
+export function evaluateSingleAnswer(
   expected: string,
   actual: string,
   options: EvaluateAnswerOptions = {},
@@ -33,8 +33,7 @@ export function evaluateAnswer(
     return { grade: "correct", distance, similarity };
   }
 
-  const maxTypoDistance =
-    options.maxTypoDistance ?? DEFAULT_MAX_TYPO_DISTANCE;
+  const maxTypoDistance = options.maxTypoDistance ?? DEFAULT_MAX_TYPO_DISTANCE;
   const minTypoSimilarity =
     options.minTypoSimilarity ?? DEFAULT_MIN_TYPO_SIMILARITY;
 
@@ -44,4 +43,23 @@ export function evaluateAnswer(
 
   return { grade: "wrong", distance, similarity };
 }
+export function evaluateAnswer(
+  answer: string,
+  acceptedTargets: string[],
+): AnswerEvaluation {
+  let best: AnswerEvaluation | null = null;
 
+  for (const target of acceptedTargets) {
+    const result = evaluateSingleAnswer(answer, target);
+
+    if (result.grade === "correct") {
+      return result;
+    }
+
+    if (!best || (best.grade === "wrong" && result.grade === "typo")) {
+      best = result;
+    }
+  }
+
+  return best!;
+}
