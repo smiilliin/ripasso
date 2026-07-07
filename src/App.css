@@ -240,6 +240,7 @@ button:focus-visible {
   border-radius: 8px;
   background: linear-gradient(180deg, var(--bg), var(--social-bg));
   box-shadow: var(--shadow);
+  box-sizing: border-box;
   text-align: left;
 }
 

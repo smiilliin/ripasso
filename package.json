@@ -12,6 +12,7 @@
   "dependencies": {
     "fastest-levenshtein": "^1.0.16",
     "firebase": "^12.15.0",
+    "firebase-admin": "^14.1.0",
     "jaro-winkler": "^0.2.8",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"

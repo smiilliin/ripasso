@@ -1,19 +1,24 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 
 import "./App.css";
 
 import { DeckPicker } from "@/components/DeckPicker";
 import { FlashcardDeck } from "@/components/FlashcardDeck";
-import { dummyDecks } from "@/data/dummyCards";
 import {
   loginWithGoogle,
   logout,
   subscribeToAuthState,
 } from "@/services/authService";
-import { updateCard } from "@/services/cardService";
-import { getDecks, saveDecks } from "@/services/deckService";
-import type { Card, CardDeck } from "@/types/card";
+import type { DeckInfo, DeckIndex } from "./types/deck";
+import {
+  getAllDecks,
+  getReviews,
+  getDeckIndex,
+  saveDeckIndex,
+  saveReview,
+} from "./services/deckService";
+import type { ReviewDocument } from "./types/review";
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -21,8 +26,10 @@ function App() {
   const [isDecksLoading, setIsDecksLoading] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const [deckError, setDeckError] = useState<string | null>(null);
-  const [decks, setDecks] = useState<CardDeck[]>([]);
+  const [decks, setDecks] = useState<DeckInfo[]>([]);
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
+  const [reviewData, setReviewData] = useState<ReviewDocument[]>([]);
+  const [deckIndex, setDeckIndex] = useState<DeckIndex | null>(null);
   const selectedDeck = decks.find((deck) => deck.id === selectedDeckId) ?? null;
 
   useEffect(() => {
@@ -39,19 +46,17 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      return;
-    }
-
     let isCurrent = true;
-    const currentUser = user;
 
     async function loadDecks() {
+      if (!user) {
+        return;
+      }
       setIsDecksLoading(true);
       setDeckError(null);
 
       try {
-        const loadedDecks = await getDecks(currentUser.uid);
+        const loadedDecks = await getAllDecks();
 
         if (isCurrent) {
           setDecks(loadedDecks);
@@ -75,6 +80,39 @@ function App() {
       isCurrent = false;
     };
   }, [user]);
+  useEffect(() => {
+    if (!user || !selectedDeckId) {
+      setReviewData([]);
+      return;
+    }
+
+    getReviews(user.uid, selectedDeckId).then((reviews) => {
+      setReviewData(reviews);
+    });
+  }, [user, selectedDeckId]);
+
+  useEffect(() => {
+    if (!user || !selectedDeck) {
+      return;
+    }
+
+    async function fetchUserDeck(user: User, selectedDeck: DeckInfo) {
+      try {
+        let deckIndex = await getDeckIndex(user.uid, selectedDeck.id);
+
+        if (!deckIndex) {
+          deckIndex = null;
+        }
+
+        setDeckIndex(deckIndex);
+      } catch (error) {
+        console.error(error);
+        setDeckError("사용자 카드 묶음을 불러오지 못했습니다.");
+      }
+    }
+
+    void fetchUserDeck(user, selectedDeck);
+  }, [user, selectedDeck]);
 
   const seedSampleDecks = async () => {
     if (!user) {
@@ -85,8 +123,8 @@ function App() {
     setDeckError(null);
 
     try {
-      await saveDecks(user.uid, dummyDecks);
-      setDecks(await getDecks(user.uid));
+      const decks = await getAllDecks();
+      setDecks(decks);
     } catch (error) {
       console.error(error);
       setDeckError("샘플 카드 묶음을 저장하지 못했습니다.");
@@ -95,32 +133,48 @@ function App() {
     }
   };
 
-  const saveReviewedCard = async (card: Card) => {
-    if (!user || !selectedDeck) {
-      return;
-    }
+  const saveReviewedCard = useCallback(
+    async (review: ReviewDocument) => {
+      if (!user || !selectedDeck) return;
 
-    try {
-      await updateCard(user.uid, selectedDeck.id, card.id, {
-        review: card.review,
-      });
-      setDecks((currentDecks) =>
-        currentDecks.map((deck) =>
-          deck.id === selectedDeck.id
-            ? {
-                ...deck,
-                cards: deck.cards.map((deckCard) =>
-                  deckCard.id === card.id ? card : deckCard,
-                ),
-              }
-            : deck,
-        ),
-      );
-    } catch (error) {
-      console.error(error);
-      setDeckError("복습 결과를 저장하지 못했습니다.");
-    }
-  };
+      try {
+        await saveReview(
+          user.uid,
+          selectedDeck.id,
+          review.cardId,
+          review.review,
+        );
+
+        setReviewData((prev) => {
+          const index = prev.findIndex((r) => r.cardId === review.cardId);
+
+          if (index === -1) {
+            return [...prev, review];
+          }
+
+          const next = [...prev];
+          next[index] = review;
+          return next;
+        });
+
+        if (deckIndex == null || review.cardId > deckIndex.unlockedIndex) {
+          await saveDeckIndex(user.uid, selectedDeck.id, {
+            unlockedIndex: review.cardId,
+          });
+
+          setDeckIndex({
+            unlockedIndex: review.cardId,
+          });
+        }
+
+        // console.log("복습 결과가 저장되었습니다.");
+      } catch (error) {
+        console.error(error);
+        setDeckError("복습 결과를 저장하지 못했습니다.");
+      }
+    },
+    [user, selectedDeck, setReviewData, deckIndex, setDeckIndex],
+  );
 
   if (isLoading) {
     return <p className="loading">Loading...</p>;
@@ -157,11 +211,13 @@ function App() {
         <p className="loading">카드 묶음을 불러오는 중...</p>
       ) : selectedDeck ? (
         <FlashcardDeck
-          cards={selectedDeck.cards}
+          deckInfo={selectedDeck}
           key={selectedDeck.id}
           title={selectedDeck.title}
           onBackToDecks={() => setSelectedDeckId(null)}
+          reviews={reviewData}
           onReviewCard={saveReviewedCard}
+          deckIndex={deckIndex}
         />
       ) : (
         <DeckPicker

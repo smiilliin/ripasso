@@ -1,7 +1,7 @@
-import type { CardDeck } from "@/types/card";
+import type { DeckInfo } from "@/types/deck";
 
 interface DeckPickerProps {
-  decks: CardDeck[];
+  decks: DeckInfo[];
   isSeeding: boolean;
   onSeedDecks: () => void;
   onSelectDeck: (deckId: string) => void;
@@ -43,7 +43,7 @@ export function DeckPicker({
               onClick={() => onSelectDeck(deck.id)}
             >
               <span className="deck-meta">
-                {deck.language} · {deck.level} · {deck.cards.length} cards
+                {deck.language} · {deck.level}
               </span>
               <span className="deck-title">{deck.title}</span>
               <span className="deck-description">{deck.description}</span>

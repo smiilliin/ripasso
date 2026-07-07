@@ -1,38 +1,24 @@
-export interface Card {
-  id: string;
-  word: string;
-  meaning: string;
-  partOfSpeech: string;
-  pronunciation: string;
-  audio?: string;
-  examples: Example[];
-  review: ReviewData;
-}
-
-export interface CardDeck {
-  id: string;
-  title: string;
-  description: string;
-  language: string;
-  level: string;
-  cards: Card[];
-}
-
-export type NewCardDeck = Omit<CardDeck, "id" | "cards">;
+import type { ReviewData, ReviewDocument } from "./review";
 
 export interface Example {
   sentence: string;
   translation: string;
   target: string;
-  difficulty: string;
+  acceptedTargets: string[];
 }
 
-export interface ReviewData {
-  interval: number;
-  ease: number;
-  reviewCount: number;
-  correctCount: number;
-  nextReview: number;
+export interface Card {
+  id: string;
+  word: string;
+  meaning: string;
+  pronunciation: string;
+  examples: Example[];
+  review: ReviewData;
 }
 
-export type NewCard = Omit<Card, "id">;
+export function cardToReviewDocument(card: Card): ReviewDocument {
+  return {
+    cardId: card.id,
+    review: card.review,
+  };
+}

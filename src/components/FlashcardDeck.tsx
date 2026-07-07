@@ -1,25 +1,34 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import type { Card } from "@/types/card";
-import { calculateNextReview } from "@/utils/reviewAlgorithm";
+import { cardToReviewDocument, type Card } from "@/types/card";
+import { calculateNextReview, TRAINING_N } from "@/utils/reviewAlgorithm";
 
-import { distance } from "fastest-levenshtein";
-import jaroWinkler from "jaro-winkler";
-import { normalize } from "@/utils/normalize";
 import { evaluateAnswer } from "@/utils/similarity";
+import type { DeckInfo, DeckIndex } from "@/types/deck";
+import { getDeckCardsByIdx, travelDeckCards } from "@/services/deckService";
+import type { ReviewData, ReviewDocument } from "@/types/review";
 
 interface FlashcardDeckProps {
-  cards: Card[];
+  deckInfo: DeckInfo;
+  reviews: ReviewDocument[];
   title: string;
   onBackToDecks: () => void;
-  onReviewCard?: (card: Card) => void | Promise<void>;
+  onReviewCard: (review: ReviewDocument) => Promise<void>;
+  deckIndex: DeckIndex | null;
 }
 
-type QuizMode = "meaningToPronunciation" | "pronunciationToMeaning" | "cloze";
+type QuizMode = "pronunciationToMeaning" | "meaningToPronunciation" | "cloze";
 type DisplayMode = "wordFirst" | "pronunciationFirst";
 
 interface QuizPrompt {
-  mode: QuizMode;
+  mode: QuizMode | null;
   label: string;
   prompt: string;
   promptSecondary?: string;
@@ -29,17 +38,13 @@ interface QuizPrompt {
 }
 
 const quizModes: QuizMode[] = [
-  "meaningToPronunciation",
   "pronunciationToMeaning",
+  "meaningToPronunciation",
   "cloze",
 ];
 
-function getRandomQuizMode(): QuizMode {
-  return quizModes[Math.floor(Math.random() * quizModes.length)];
-}
-
-function getClozeParts(card: Card) {
-  const example = card.examples[0];
+function getClozeParts(card: Card | null) {
+  const example = card?.examples[0];
 
   if (!example) {
     return { before: "", after: "" };
@@ -50,17 +55,27 @@ function getClozeParts(card: Card) {
   return { before, after };
 }
 
-function getPrimaryExpression(card: Card, displayMode: DisplayMode): string {
-  return displayMode === "pronunciationFirst" ? card.pronunciation : card.word;
+function getPrimaryExpression(
+  card: Card | null,
+  displayMode: DisplayMode,
+): string {
+  return displayMode === "pronunciationFirst"
+    ? (card?.pronunciation ?? "")
+    : (card?.word ?? "");
 }
 
-function getSecondaryExpression(card: Card, displayMode: DisplayMode): string {
-  return displayMode === "pronunciationFirst" ? card.word : card.pronunciation;
+function getSecondaryExpression(
+  card: Card | null,
+  displayMode: DisplayMode,
+): string {
+  return displayMode === "pronunciationFirst"
+    ? (card?.word ?? "")
+    : (card?.pronunciation ?? "");
 }
 
 function createQuizPrompt(
-  card: Card,
-  mode: QuizMode,
+  card: Card | null,
+  mode: QuizMode | null,
   displayMode: DisplayMode,
 ): QuizPrompt {
   const primaryExpression = getPrimaryExpression(card, displayMode);
@@ -71,7 +86,7 @@ function createQuizPrompt(
       mode,
       label: "표현 -> 뜻",
       prompt: primaryExpression,
-      answer: card.meaning,
+      answer: card?.meaning ?? "",
       answerSecondary: secondaryExpression,
       helper: "표현 단서를 보고 뜻을 떠올려보세요.",
     };
@@ -81,7 +96,7 @@ function createQuizPrompt(
     return {
       mode,
       label: "뜻 -> 표현",
-      prompt: card.meaning,
+      prompt: card?.meaning ?? "",
       answer: primaryExpression,
       answerSecondary: secondaryExpression,
       helper: "이 뜻에 해당하는 표현을 떠올려보세요.",
@@ -92,37 +107,130 @@ function createQuizPrompt(
     return {
       mode,
       label: "예문 빈칸",
-      prompt: card.examples[0]?.translation ?? "",
-      answer: card.examples[0]?.sentence ?? "",
-      answerSecondary: card.word,
+      prompt: card?.examples[0]?.translation ?? "",
+      answer: card?.examples[0]?.sentence ?? "",
+      answerSecondary: card?.word ?? "",
       helper: "빈칸에 들어갈 단어를 떠올려보세요.",
     };
   }
 
   return {
     mode,
-    label: "표현 -> 뜻",
-    prompt: primaryExpression,
-    answer: card.meaning,
-    answerSecondary: secondaryExpression,
-    helper: "표현 단서를 보고 뜻을 떠올려보세요.",
+    label: "",
+    prompt: "",
+    answer: "",
+    answerSecondary: "",
+    helper: "",
   };
 }
 
+const EXPLORE_N = 15;
+const REVIEW_N = 10;
+
 export function FlashcardDeck({
-  cards,
+  deckInfo,
+  reviews,
   title,
   onBackToDecks,
   onReviewCard,
+  deckIndex,
 }: FlashcardDeckProps) {
-  const [studyCards, setStudyCards] = useState(cards);
+  const [studyCards, setStudyCards] = useState<Card[]>([]);
+  const [updateFlag, setUpdateFlag] = useState(true);
+
+  useEffect(() => {
+    if (!deckInfo || !updateFlag) {
+      return;
+    }
+    setUpdateFlag(false);
+
+    async function fetchCards(deckInfo: DeckInfo, deckIndex: DeckIndex | null) {
+      const [rangeCardsData, reviewCardsData] = await Promise.all([
+        travelDeckCards(deckInfo.id, deckIndex, EXPLORE_N),
+        getDeckCardsByIdx(
+          deckInfo.id,
+          reviews
+            ?.filter((r) => r.review.due < Date.now())
+            .map((r) => r.cardId),
+        ),
+      ]);
+
+      function randomPick<T>(arr: T[], n: number): T[] {
+        const shuffled = [...arr].sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, n);
+      }
+
+      const reviewCardsDataLimited = randomPick(reviewCardsData, REVIEW_N);
+      const reviewCards = reviewCardsDataLimited.map<Card>((card) => ({
+        ...card,
+        review: reviews?.find((r) => r.cardId === card.id)?.review ?? {
+          level: 0,
+          due: Date.now(),
+          recoveryLevel: null,
+        },
+      }));
+      const rangeCards = rangeCardsData.map<Card>((card) => ({
+        ...card,
+        review: reviews?.find((r) => r.cardId === card.id)?.review ?? {
+          level: 0,
+          due: Date.now(),
+          recoveryLevel: null,
+        },
+      }));
+
+      setStudyCards([...rangeCards, ...reviewCards]);
+    }
+
+    void fetchCards(deckInfo, deckIndex);
+  }, [deckInfo, deckIndex, reviews, updateFlag]);
+
   const [activeIndex, setActiveIndex] = useState(0);
   const [isAnswerVisible, setIsAnswerVisible] = useState(false);
-  const [quizMode, setQuizMode] = useState<QuizMode>(getRandomQuizMode);
   const [displayMode, setDisplayMode] = useState<DisplayMode>("wordFirst");
   const [isCycleCompleteOpen, setIsCycleCompleteOpen] = useState(false);
 
-  const activeCard = studyCards[activeIndex];
+  const activeCard = useMemo(() => {
+    return studyCards[activeIndex] ?? null;
+  }, [studyCards, activeIndex]);
+
+  const getQuizMode = (review: ReviewData | null) => {
+    if (!review) return null;
+
+    let prob_weight = [0, 0, 0];
+
+    if (review.level < 1) {
+      return quizModes[0] as QuizMode;
+    }
+
+    prob_weight[0] = 1;
+
+    if (review.level >= 1) {
+      prob_weight[1] = 1;
+    }
+    if (review.level > TRAINING_N) {
+      prob_weight[2] = review.level / TRAINING_N;
+    }
+
+    const total_weight = prob_weight.reduce((a, b) => a + b, 0);
+
+    const rand = Math.random() * total_weight;
+    let cumulative_weight = 0;
+
+    for (let i = 0; i < prob_weight.length; i++) {
+      cumulative_weight += prob_weight[i];
+      if (rand < cumulative_weight) {
+        return quizModes[i] as QuizMode;
+      }
+    }
+
+    return quizModes[0] as QuizMode;
+  };
+
+  const quizMode = useMemo(
+    () => getQuizMode(studyCards[activeIndex]?.review),
+    [activeIndex, studyCards],
+  );
+
   const quiz = useMemo(
     () =>
       activeCard ? createQuizPrompt(activeCard, quizMode, displayMode) : null,
@@ -132,6 +240,7 @@ export function FlashcardDeck({
     () => `${activeIndex + 1} / ${studyCards.length}`,
     [activeIndex, studyCards.length],
   );
+
   const isLastCard = activeIndex === studyCards.length - 1;
   const cloze = getClozeParts(activeCard);
   const [clozeAnswer, setClozeAnswer] = useState("");
@@ -172,7 +281,7 @@ export function FlashcardDeck({
   };
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useLayoutEffect(() => {
     if (!inputRef.current) return;
@@ -197,19 +306,9 @@ export function FlashcardDeck({
     setClozeInputWidth(Math.max(width + 24, 32));
   }, [clozeAnswer]);
 
-  if (!activeCard) {
-    return (
-      <section className="empty-state">
-        <h2>카드가 아직 없습니다</h2>
-        <p>새 단어를 추가하면 여기에 플래시카드가 표시됩니다.</p>
-      </section>
-    );
-  }
-
   const goToCard = (nextIndex: number) => {
     setActiveIndex(nextIndex);
     setIsAnswerVisible(false);
-    setQuizMode(getRandomQuizMode());
   };
 
   const goToNext = () => {
@@ -224,30 +323,37 @@ export function FlashcardDeck({
   const continueStudying = () => {
     setIsCycleCompleteOpen(false);
     goToCard(0);
+    setUpdateFlag(true);
   };
 
-  const recordReview = (isCorrect: boolean) => {
-    const reviewedCard = {
-      ...activeCard,
-      review: calculateNextReview(activeCard.review, isCorrect),
-    };
+  const judge = useCallback(
+    (isCorrect: boolean) => {
+      if (!activeCard) return;
 
-    setStudyCards((currentCards) =>
-      currentCards.map((card, index) =>
-        index === activeIndex ? reviewedCard : card,
-      ),
-    );
-    void onReviewCard?.(reviewedCard);
+      const reviewedActiveCard = {
+        ...activeCard,
+        review: calculateNextReview(activeCard.review, isCorrect),
+      };
 
-    if (isLastCard) {
-      setIsCycleCompleteOpen(true);
-      return;
-    }
+      onReviewCard(cardToReviewDocument(reviewedActiveCard)).then(() => {
+        setStudyCards((currentCards) =>
+          currentCards.map((card, index) =>
+            index === activeIndex ? reviewedActiveCard : card,
+          ),
+        );
 
-    setShownOnce(false);
+        if (isLastCard) {
+          setIsCycleCompleteOpen(true);
+          return;
+        }
 
-    goToNext();
-  };
+        setShownOnce(false);
+
+        goToNext();
+      });
+    },
+    [activeIndex, activeCard, isLastCard, updateFlag, onReviewCard],
+  );
 
   return (
     <section className="flashcard-section" aria-label="Flashcard deck">
@@ -279,9 +385,8 @@ export function FlashcardDeck({
         </div>
       </div>
 
-      <button
+      <div
         className="flashcard"
-        type="button"
         onClick={() => {
           setIsAnswerVisible((current) => {
             if (quiz?.mode !== "cloze") {
@@ -321,7 +426,7 @@ export function FlashcardDeck({
                 visibility: quiz?.mode !== "cloze" ? "visible" : "hidden",
               }}
             >
-              {activeCard.review.reviewCount}번째 등장한 단어예요
+              {(activeCard?.review?.level ?? 0) + 1}번째로 등장한 단어예요
             </span>
             <span className="example" style={{ visibility: "hidden" }}>
               .
@@ -362,13 +467,13 @@ export function FlashcardDeck({
             <span className="translation">{currentExample?.translation}</span>
           </span>
         )}
-      </button>
+      </div>
 
       <div className="review-actions">
         <button
           className="review-button dont-know"
           type="button"
-          onClick={() => recordReview(false)}
+          onClick={() => judge(false)}
         >
           몰라요
         </button>
@@ -376,7 +481,7 @@ export function FlashcardDeck({
           <button
             className="review-button know"
             type="button"
-            onClick={() => recordReview(true)}
+            onClick={() => judge(true)}
           >
             알아요
           </button>
@@ -394,7 +499,7 @@ export function FlashcardDeck({
             role="dialog"
           >
             <p className="eyebrow">한 바퀴 완료</p>
-            <h2 id="cycle-complete-title">이 카드 묶음을 계속 공부할까요?</h2>
+            <h2 id="cycle-complete-title">이 카드 묶음을 계속 진행할까요?</h2>
             <p>
               모든 카드를 한 번씩 봤습니다. 바로 한 바퀴 더 돌리거나, 메인으로
               돌아갈 수 있습니다.
