@@ -26,5 +26,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "scripts/uploadDeck.ts", "scripts/dummyCards.ts"]
+  "include": ["src"]
 }
