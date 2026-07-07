@@ -31,6 +31,7 @@ function App() {
   const [reviewData, setReviewData] = useState<ReviewDocument[]>([]);
   const [deckIndex, setDeckIndex] = useState<DeckIndex | null>(null);
   const selectedDeck = decks.find((deck) => deck.id === selectedDeckId) ?? null;
+  const [updateFlag, setUpdateFlag] = useState(false);
 
   useEffect(() => {
     return subscribeToAuthState((currentUser) => {
@@ -105,6 +106,7 @@ function App() {
         }
 
         setDeckIndex(deckIndex);
+        setUpdateFlag(true);
       } catch (error) {
         console.error(error);
         setDeckError("사용자 카드 묶음을 불러오지 못했습니다.");
@@ -198,10 +200,20 @@ function App() {
   return (
     <main className="app-shell">
       <header className="top-bar">
-        <div>
-          <p className="eyebrow">오늘의 Ripasso</p>
-          <p className="user-name">{user.displayName ?? user.email}</p>
-        </div>
+        <span style={{ position: "relative" }}>
+          <img
+            src="/ghost.png"
+            width="40"
+            height="40"
+            style={{ position: "absolute", top: "10px", left: "100px" }}
+            alt="Ripassooo"
+            className="logo"
+          />
+          <div>
+            <p className="eyebrow">오늘의 Ripasso</p>
+            <p className="user-name">{user.displayName ?? user.email}</p>
+          </div>
+        </span>
         <button className="secondary-button" onClick={logout}>
           로그아웃
         </button>
@@ -215,6 +227,8 @@ function App() {
           key={selectedDeck.id}
           title={selectedDeck.title}
           onBackToDecks={() => setSelectedDeckId(null)}
+          updateFlag={updateFlag}
+          setUpdateFlag={setUpdateFlag}
           reviews={reviewData}
           onReviewCard={saveReviewedCard}
           deckIndex={deckIndex}

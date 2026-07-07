@@ -19,6 +19,8 @@ interface FlashcardDeckProps {
   deckInfo: DeckInfo;
   reviews: ReviewDocument[];
   title: string;
+  updateFlag: boolean;
+  setUpdateFlag: (flag: boolean) => void;
   onBackToDecks: () => void;
   onReviewCard: (review: ReviewDocument) => Promise<void>;
   deckIndex: DeckIndex | null;
@@ -131,12 +133,13 @@ export function FlashcardDeck({
   deckInfo,
   reviews,
   title,
+  updateFlag,
+  setUpdateFlag,
   onBackToDecks,
   onReviewCard,
   deckIndex,
 }: FlashcardDeckProps) {
   const [studyCards, setStudyCards] = useState<Card[]>([]);
-  const [updateFlag, setUpdateFlag] = useState(true);
 
   useEffect(() => {
     if (!deckInfo || !updateFlag) {
