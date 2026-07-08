@@ -163,6 +163,7 @@ export function FlashcardDeck({
           deckInfo.id,
           reviews
             ?.filter((r) => r.review.due < Date.now())
+            .slice(0, REVIEW_N * 2)
             .map((r) => r.cardId),
           cardCache.current,
         ),
