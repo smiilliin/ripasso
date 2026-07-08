@@ -12,6 +12,7 @@ const leftpad = (str: string, len: number) => {
 const jlptCards: CardData[] = jlptN35.map((card, index) => ({
   ...card,
   id: `jp-n35-${leftpad(index.toString(), 6)}`,
+  index: index,
 }));
 
 export const dummyDecks: { info: DeckInfo; cards: CardData[] }[] = [

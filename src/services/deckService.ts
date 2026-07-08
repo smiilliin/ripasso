@@ -109,13 +109,7 @@ export async function getCardIndex(
     return null;
   }
 
-  const indexSnapshot = await getDocs(
-    query(collection(db, "decks", deckId, "cards"), orderBy("__name__")),
-  );
-
-  const index = indexSnapshot.docs.findIndex((d) => d.id === cardId);
-
-  return index !== -1 ? index : null;
+  return doc.data().index;
 }
 
 export async function getReviews(

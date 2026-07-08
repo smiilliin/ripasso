@@ -15,6 +15,7 @@ export interface DeckIndex {
 
 export interface CardData {
   id: string;
+  index: number;
   word: string;
   meaning: string;
   pronunciation: string;
