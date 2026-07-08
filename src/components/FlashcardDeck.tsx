@@ -142,12 +142,14 @@ export function FlashcardDeck({
   const [studyCards, setStudyCards] = useState<Card[]>([]);
   const [reviewCards, setReviewCards] = useState<Card[]>([]);
   const [leftReview, setLeftReview] = useState<Card[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!deckInfo || !updateFlag) {
       return;
     }
     setUpdateFlag(false);
+    setLoading(true);
 
     async function fetchCards(deckInfo: DeckInfo, deckIndex: DeckIndex | null) {
       const [rangeCardsData, reviewCardsData] = await Promise.all([
@@ -184,6 +186,7 @@ export function FlashcardDeck({
       }));
 
       setStudyCards([...rangeCards, ...reviewCards]);
+      setLoading(false);
     }
 
     void fetchCards(deckInfo, deckIndex);
@@ -396,7 +399,7 @@ export function FlashcardDeck({
           setLeftReview([...leftReview]);
         }
 
-        if (isEndCards && isLastReviewCards && noReviewCards) {
+        if (isLastCard && isLastReviewCards && noReviewCards) {
           setIsCycleCompleteOpen(true);
           return;
         }
@@ -505,7 +508,9 @@ export function FlashcardDeck({
                 visibility: quiz?.mode !== "cloze" ? "visible" : "hidden",
               }}
             >
-              {activeCard?.review?.level ?? 0} 정도로 익숙한 단어예요
+              {activeCard && (
+                <span>{activeCard.review.level} 정도로 익숙한 단어예요</span>
+              )}
             </span>
             <span className="example" style={{ visibility: "hidden" }}>
               .
@@ -568,6 +573,20 @@ export function FlashcardDeck({
           <button className="review-button disabled" type="button"></button>
         )}
       </div>
+
+      {loading ? (
+        <div className="loading-overlay" role="presentation">
+          <section
+            className="cycle-complete-dialog"
+            aria-labelledby="cycle-complete-title"
+            aria-modal="true"
+            role="dialog"
+          >
+            <p>카드 로딩중</p>
+            <h2>잠시만 기다려주세요</h2>
+          </section>
+        </div>
+      ) : null}
 
       {isCycleCompleteOpen ? (
         <div className="cycle-complete-overlay" role="presentation">
