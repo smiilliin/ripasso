@@ -94,7 +94,7 @@ export function DeckPicker({
                     {Math.round((unlockedIndex / deck.cardcount) * 100)}%) ]
                   </span>
                 ) : (
-                  <span className="deck-progress">[ 진도율 로딩중 ]</span>
+                  <span className="deck-progress">[ ]</span>
                 )}
               </button>
             );
