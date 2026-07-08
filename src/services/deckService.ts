@@ -37,17 +37,50 @@ export async function getDeckInfo(deckId: string): Promise<DeckInfo> {
 export async function getDeckCardsByIdx(
   deckId: string,
   cardIds: string[],
+  cardCache: Map<string, CardData>,
 ): Promise<CardData[]> {
+  if (cardIds.length > 50) {
+    throw new Error("Too many card IDs. Limit is 50.");
+  }
+
+  const result: CardData[] = [];
+  const needFetch: string[] = [];
+
+  for (const id of cardIds) {
+    const cached = cardCache.get(id);
+
+    if (cached) {
+      result.push(cached);
+    } else {
+      needFetch.push(id);
+    }
+  }
+
   const snapshots = await Promise.all(
-    cardIds.map((cardId) => getDoc(doc(db, "decks", deckId, "cards", cardId))),
+    needFetch.map((cardId) =>
+      getDoc(doc(db, "decks", deckId, "cards", cardId)),
+    ),
   );
 
-  return snapshots
-    .filter((snapshot) => snapshot.exists())
-    .map((snapshot) => ({
-      id: snapshot.id,
-      ...(snapshot.data() as Omit<CardData, "id">),
-    }));
+  snapshots.forEach((snapshot) => {
+    if (snapshot.exists()) {
+      const card = {
+        id: snapshot.id,
+        ...(snapshot.data() as Omit<CardData, "id">),
+      };
+
+      cardCache.set(card.id, card);
+      result.push(card);
+    }
+  });
+
+  return result;
+  // return snapshots
+  //   .filter((snapshot) => snapshot.exists())
+  //   .map((snapshot) => ({
+  //     id: snapshot.id,
+  //     ...(snapshot.data() as Omit<CardData, "id">),
+  //   }));
 }
 
 export async function travelDeckCards(
@@ -66,10 +99,12 @@ export async function travelDeckCards(
 
     const snapshot = await getDocs(q);
 
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...(doc.data() as Omit<CardData, "id">),
-    }));
+    return snapshot.docs.map((doc) => {
+      return {
+        id: doc.id,
+        ...(doc.data() as Omit<CardData, "id">),
+      };
+    });
   } else {
     q = query(
       collection(db, "decks", deckId, "cards"),

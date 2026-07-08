@@ -11,7 +11,7 @@ import { cardToReviewDocument, type Card } from "@/types/card";
 import { calculateNextReview, TRAINING_N } from "@/utils/reviewAlgorithm";
 
 import { evaluateAnswer } from "@/utils/similarity";
-import type { DeckInfo, DeckIndex } from "@/types/deck";
+import type { DeckInfo, DeckIndex, CardData } from "@/types/deck";
 import { getDeckCardsByIdx, travelDeckCards } from "@/services/deckService";
 import type { ReviewData, ReviewDocument } from "@/types/review";
 
@@ -143,6 +143,11 @@ export function FlashcardDeck({
   const [reviewCards, setReviewCards] = useState<Card[]>([]);
   const [leftReview, setLeftReview] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
+  const cardCache = useRef(new Map<string, CardData>());
+
+  useEffect(() => {
+    cardCache.current.clear();
+  }, [deckInfo?.id]);
 
   useEffect(() => {
     if (!deckInfo || !updateFlag) {
@@ -159,6 +164,7 @@ export function FlashcardDeck({
           reviews
             ?.filter((r) => r.review.due < Date.now())
             .map((r) => r.cardId),
+          cardCache.current,
         ),
       ]);
 
