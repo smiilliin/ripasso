@@ -37,7 +37,7 @@ export const dummyDecks: { info: DeckInfo; cards: CardData[] }[] = [
     info: {
       id: "cils-a1b1",
       title: "CILS A1-B1",
-      description: "CILS A1-B1 수준의 일본어 표현을 학습합니다.",
+      description: "CILS A1-B1 수준의 이탈리아어 표현을 학습합니다.",
       language: "Italian",
       level: "A1-B1",
       cardcount: cilsCards.length,
