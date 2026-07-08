@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -13,11 +14,17 @@ const firebaseConfig = {
   projectId: "ripasso-8a3bc",
   storageBucket: "ripasso-8a3bc.firebasestorage.app",
   messagingSenderId: "339789592498",
-  appId: "1:339789592498:web:007d787244fd4f6376d6ab"
+  appId: "1:339789592498:web:007d787244fd4f6376d6ab",
 };
+const recaptchaSiteKey = "6LdQzUktAAAAACNsrmIvzrSgdOhmlmCFGg-ZBvHD";
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+  isTokenAutoRefreshEnabled: true,
+});
