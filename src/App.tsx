@@ -186,8 +186,24 @@ function App() {
     return (
       <main className="app-shell auth-shell">
         <section className="auth-panel">
-          <p className="eyebrow">Spaced repetition for language learners</p>
-          <h1>Ripasso</h1>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: "5px",
+            }}
+          >
+            <img
+              src="/ghost.png"
+              width="50"
+              height="50"
+              // style={{ position: "absolute", top: "10px", left: "100px" }}
+              alt="Ripassooo"
+              className="logo"
+            />
+            <h1>Ripasso</h1>
+          </div>
           <p className="auth-copy">망각과 떠올림을 위한 복습</p>
           <button className="primary-button" onClick={loginWithGoogle}>
             Google Login
