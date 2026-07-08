@@ -86,6 +86,37 @@ export async function travelDeckCards(
     }));
   }
 }
+export async function getCardIndex(
+  deckId: string,
+  cardId: string,
+): Promise<number | null> {
+  const q = query(
+    collection(db, "decks", deckId, "cards"),
+    orderBy("__name__"),
+    startAt(cardId),
+    limit(1),
+  );
+
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  const doc = snapshot.docs[0];
+
+  if (doc.id !== cardId) {
+    return null;
+  }
+
+  const indexSnapshot = await getDocs(
+    query(collection(db, "decks", deckId, "cards"), orderBy("__name__")),
+  );
+
+  const index = indexSnapshot.docs.findIndex((d) => d.id === cardId);
+
+  return index !== -1 ? index : null;
+}
 
 export async function getReviews(
   userId: string,

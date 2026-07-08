@@ -10,8 +10,8 @@ initializeApp({
 
 const db = getFirestore();
 
-async function uploadDecks() {
-  for (const deck of dummyDecks) {
+async function uploadDecks(forUploadDecks: typeof dummyDecks) {
+  for (const deck of forUploadDecks) {
     const { info, cards } = deck;
 
     await db.collection("decks").doc(info.id).set({
@@ -19,6 +19,7 @@ async function uploadDecks() {
       description: info.description,
       language: info.language,
       level: info.level,
+      cardcount: info.cardcount,
     });
 
     const writer = db.bulkWriter();
@@ -36,9 +37,47 @@ async function uploadDecks() {
   }
 }
 
-uploadDecks()
-  .then(() => {
-    console.log("Done!");
-    process.exit(0);
-  })
-  .catch(console.error);
+import readline from "readline";
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+// ask for selection of decks to upload
+for (const [index, deck] of dummyDecks.entries()) {
+  console.log(`${index + 1}. ${deck.info.title}`);
+}
+
+rl.question(
+  "Select decks to upload (comma separated): ",
+  async (answer: string) => {
+    const selectedIndexes = answer
+      .split(",")
+      .map((s) => parseInt(s.trim()) - 1)
+      .filter((i) => i >= 0 && i < dummyDecks.length);
+
+    const selectedDecks = selectedIndexes.map((i) => dummyDecks[i]);
+    if (selectedDecks.length === 0) {
+      console.log("No decks selected. Exiting.");
+      rl.close();
+      process.exit(0);
+    }
+
+    console.log(
+      `Uploading ${selectedDecks.length} deck(s): ${selectedDecks
+        .map((d) => d.info.title)
+        .join(", ")}`,
+    );
+
+    try {
+      await uploadDecks(selectedDecks);
+      console.log("Done!");
+    } catch (error) {
+      console.error(error);
+    } finally {
+      rl.close();
+      process.exit(0);
+    }
+  },
+);

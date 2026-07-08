@@ -152,6 +152,12 @@ button:focus-visible {
   line-height: 1.45;
 }
 
+.deck-progress {
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.45;
+}
+
 .deck-empty-state {
   display: grid;
   gap: 14px;

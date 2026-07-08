@@ -252,6 +252,7 @@ function App() {
       ) : (
         <DeckPicker
           decks={decks}
+          user={user}
           isSeeding={isSeeding}
           onSeedDecks={seedSampleDecks}
           onSelectDeck={setSelectedDeckId}

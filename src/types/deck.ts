@@ -6,6 +6,7 @@ export interface DeckInfo {
   description: string;
   language: string;
   level: string;
+  cardcount: number;
 }
 
 export interface DeckIndex {
