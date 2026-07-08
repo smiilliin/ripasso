@@ -140,6 +140,8 @@ export function FlashcardDeck({
   deckIndex,
 }: FlashcardDeckProps) {
   const [studyCards, setStudyCards] = useState<Card[]>([]);
+  const [reviewCards, setReviewCards] = useState<Card[]>([]);
+  const [leftReview, setLeftReview] = useState<Card[]>([]);
 
   useEffect(() => {
     if (!deckInfo || !updateFlag) {
@@ -188,13 +190,31 @@ export function FlashcardDeck({
   }, [deckInfo, deckIndex, reviews, updateFlag]);
 
   const [activeIndex, setActiveIndex] = useState(0);
+  const [reviewIndex, setReviewIndex] = useState(0);
   const [isAnswerVisible, setIsAnswerVisible] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>("wordFirst");
   const [isCycleCompleteOpen, setIsCycleCompleteOpen] = useState(false);
 
+  const isEndCards = activeIndex === studyCards.length;
+  const isLastCard = isEndCards || activeIndex === studyCards.length - 1;
+  const isEndReviewCards = reviewIndex === reviewCards.length;
+  const isLastReviewCards =
+    isEndReviewCards || reviewIndex === reviewCards.length - 1;
+  const noReviewCards = reviewCards.length === 0 && leftReview.length === 0;
+
   const activeCard = useMemo(() => {
-    return studyCards[activeIndex] ?? null;
-  }, [studyCards, activeIndex]);
+    if (!studyCards || studyCards.length === 0) {
+      return null;
+    }
+    if (!isEndCards) {
+      return studyCards[activeIndex];
+    }
+    if (isEndCards && !noReviewCards) {
+      return reviewCards[reviewIndex];
+    }
+
+    return null;
+  }, [studyCards, activeIndex, reviewCards, reviewIndex]);
 
   const getQuizMode = (review: ReviewData | null) => {
     if (!review) return null;
@@ -230,8 +250,8 @@ export function FlashcardDeck({
   };
 
   const quizMode = useMemo(
-    () => getQuizMode(studyCards[activeIndex]?.review),
-    [activeIndex, studyCards],
+    () => getQuizMode(activeCard?.review ?? null),
+    [activeCard],
   );
 
   const quiz = useMemo(
@@ -239,12 +259,20 @@ export function FlashcardDeck({
       activeCard ? createQuizPrompt(activeCard, quizMode, displayMode) : null,
     [activeCard, displayMode, quizMode],
   );
-  const progress = useMemo(
-    () => `${activeIndex + 1} / ${studyCards.length}`,
-    [activeIndex, studyCards.length],
-  );
+  const progress = useMemo(() => {
+    if (isEndCards && !noReviewCards) {
+      return `${reviewIndex + 1} / ${reviewCards.length} [복습]`;
+    }
+    return `${activeIndex + 1} / ${studyCards.length} [학습]`;
+  }, [
+    activeIndex,
+    studyCards.length,
+    isEndCards,
+    noReviewCards,
+    reviewIndex,
+    reviewCards.length,
+  ]);
 
-  const isLastCard = activeIndex === studyCards.length - 1;
   const cloze = getClozeParts(activeCard);
   const [clozeAnswer, setClozeAnswer] = useState("");
   const [clozeInputWidth, setClozeInputWidth] = useState(32);
@@ -264,7 +292,7 @@ export function FlashcardDeck({
   const submitClozeAnswer = () => {
     setIsAnswerVisible((current) => !current);
 
-    const target = currentExample?.target ?? activeCard.word;
+    const target = currentExample?.target ?? "";
     const acceptedTargets = (currentExample?.acceptedTargets ?? []).concat([
       target,
     ]);
@@ -315,15 +343,12 @@ export function FlashcardDeck({
   const goToCard = (nextIndex: number) => {
     setActiveIndex(nextIndex);
     setIsAnswerVisible(false);
+    setShownOnce(false);
   };
-
-  const goToNext = () => {
-    if (isLastCard) {
-      setIsCycleCompleteOpen(true);
-      return;
-    }
-
-    goToCard(activeIndex + 1);
+  const goToReviewCard = (nextIndex: number) => {
+    setReviewIndex(nextIndex);
+    setIsAnswerVisible(false);
+    setShownOnce(false);
   };
 
   const continueStudying = () => {
@@ -349,17 +374,64 @@ export function FlashcardDeck({
           ),
         );
 
-        if (isLastCard) {
+        if (!isCorrect && !isEndCards) {
+          // append or replace the card in the reviewCards list
+
+          setReviewCards((currentCards) => {
+            const index = currentCards.findIndex(
+              (card) => card.id === reviewedActiveCard.id,
+            );
+
+            if (index === -1) {
+              return [...currentCards, reviewedActiveCard];
+            }
+
+            const next = [...currentCards];
+            next[index] = reviewedActiveCard;
+            return next;
+          });
+        } else if (!isCorrect && isEndCards) {
+          // add to leftReview
+          leftReview.push(reviewedActiveCard);
+          setLeftReview([...leftReview]);
+        }
+
+        if (isEndCards && isLastReviewCards && noReviewCards) {
           setIsCycleCompleteOpen(true);
           return;
         }
 
-        setShownOnce(false);
-
-        goToNext();
+        if (!isEndCards) {
+          goToCard(activeIndex + 1);
+        } else if (isLastCard && !isEndCards) {
+          // make isEndCards true and go to the first review card
+          goToCard(activeIndex + 1);
+          goToReviewCard(0);
+        } else if (!isLastReviewCards) {
+          goToReviewCard(reviewIndex + 1);
+        } else if (leftReview.length > 0) {
+          setReviewCards([...leftReview]);
+          setLeftReview([]);
+          goToReviewCard(0);
+        } else {
+          setIsCycleCompleteOpen(true);
+          return;
+        }
+        // goToNext();
       });
     },
-    [activeIndex, activeCard, isLastCard, updateFlag, onReviewCard],
+    [
+      activeIndex,
+      activeCard,
+      isLastCard,
+      updateFlag,
+      onReviewCard,
+      isEndCards,
+      isLastReviewCards,
+      noReviewCards,
+      reviewIndex,
+      leftReview,
+    ],
   );
 
   return (
