@@ -30,4 +30,4 @@ dist-ssr
 # Firebase
 .firebase
 service-account.json
-scripts/jlpt_n35.json
+scripts/*.json
