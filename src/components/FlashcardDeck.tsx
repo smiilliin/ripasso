@@ -163,6 +163,7 @@ export function FlashcardDeck({
           deckInfo.id,
           reviews
             ?.filter((r) => r.review.due < Date.now())
+            .sort((a, b) => a.review.due - b.review.due)
             .slice(0, REVIEW_N * 2)
             .map((r) => r.cardId),
           cardCache.current,
@@ -542,6 +543,7 @@ export function FlashcardDeck({
               <>
                 <span>{clozeFeedback}</span>
                 <span className="example">{quiz?.answer}</span>
+                <span className="translation">{quiz?.prompt}</span>
               </>
             ) : (
               <>
@@ -552,10 +554,11 @@ export function FlashcardDeck({
                 </span>
 
                 <span className="example">{currentExample?.sentence}</span>
+                <span className="translation">
+                  {currentExample?.translation}
+                </span>
               </>
             )}
-
-            <span className="translation">{currentExample?.translation}</span>
           </span>
         )}
       </div>
