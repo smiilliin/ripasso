@@ -90,8 +90,8 @@ export function DeckPicker({
                 <span className="deck-description">{deck.description}</span>
                 {unlockedIndex !== null ? (
                   <span className="deck-progress">
-                    [ {unlockedIndex} / {deck.cardcount} (
-                    {Math.round((unlockedIndex / deck.cardcount) * 100)}%) ]
+                    [ {unlockedIndex + 1} / {deck.cardcount} (
+                    {Math.round(((unlockedIndex + 1) / deck.cardcount) * 100)}%) ]
                   </span>
                 ) : (
                   <span className="deck-progress">[ ]</span>
